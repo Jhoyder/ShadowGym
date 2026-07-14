@@ -37,7 +37,7 @@ def calculate_end_date(sender, instance, **kwargs):
     if instance.membership_start and instance.plan:
         if instance.plan.duration_unit == 'days':
             instance.membership_end = instance.membership_start + relativedelta(days=instance.plan.duration)
-        elif instance.plan.duration_unit == 'months':
+        elif instance.plan.duration_unit == 'meses':
             instance.membership_end = instance.membership_start + relativedelta(months=instance.plan.duration)
         elif instance.plan.duration_unit == 'years':
             instance.membership_end = instance.membership_start + relativedelta(years=instance.plan.duration)
