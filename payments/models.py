@@ -2,7 +2,7 @@ from django.db import models
 from members.models import Member
 from memberships.models import MembershipPlan
 from datetime import timedelta
-from django.db.models.signals import pre_save
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from dateutil.relativedelta import relativedelta
 
@@ -22,22 +22,28 @@ class Payment(models.Model):
     membership_end = models.DateField()
     method = models.CharField(max_length=10, choices=PAYMENT_METHODS, default='cash')
     notes = models.TextField(blank=True, null=True)
-
+    
+    def __str__(self):
+        return f"{self.member} - {self.plan.name if self.plan else 'Sin plan'} -${self.amount}"
+    
     class Meta:
         verbose_name = "Pago"
         verbose_name_plural = "Pagos"
         ordering = ['-payment_date']
    
-    def __str__(self):
-        return f"{self.member} - {self.plan.name} -${self.amount}"
+    def save(self, *args, **kwargs):
+        """Calcula automáticamente la fecha de fin basada en el plan seleccionado"""
+        if self.plan and self.membership_start:
+            # Sumar los días del plan a la fecha de inicio
+            self.membership_end = self.membership_start + timedelta(days=self.plan.duration_days)
+        super().save(*args, **kwargs)
 
-@receiver(pre_save, sender=Payment)
+@receiver(post_save, sender=Payment)
 
-def calculate_end_date(sender, instance, **kwargs):
-    if instance.membership_start and instance.plan:
-        if instance.plan.duration_unit == 'days':
-            instance.membership_end = instance.membership_start + relativedelta(days=instance.plan.duration)
-        elif instance.plan.duration_unit == 'meses':
-            instance.membership_end = instance.membership_start + relativedelta(months=instance.plan.duration)
-        elif instance.plan.duration_unit == 'years':
-            instance.membership_end = instance.membership_start + relativedelta(years=instance.plan.duration)
+def update_member_membership(sender, instance, created, **kwargs):
+    if created:  # Solo cuando creas un pago nuevo
+        member = instance.member
+        member.membership_end = instance.membership_end
+        member.membership_start = instance.membership_start
+        member.is_active = True
+        member.save()
