@@ -2,7 +2,7 @@ from django.db import models
 from members.models import Member
 from memberships.models import MembershipPlan
 from datetime import timedelta
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save
 from django.dispatch import receiver
 from dateutil.relativedelta import relativedelta
 
@@ -31,7 +31,7 @@ class Payment(models.Model):
     def __str__(self):
         return f"{self.member} - {self.plan.name} -${self.amount}"
 
-@receiver(post_save, sender=Payment)
+@receiver(pre_save, sender=Payment)
 
 def calculate_end_date(sender, instance, **kwargs):
     if instance.membership_start and instance.plan:
