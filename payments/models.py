@@ -1,10 +1,8 @@
 from django.db import models
-from members.models import Member
-from memberships.models import MembershipPlan
+from members.models import Member, Plan
 from datetime import timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from dateutil.relativedelta import relativedelta
 
 # Create your models here.
 class Payment(models.Model):
@@ -15,7 +13,7 @@ class Payment(models.Model):
     ]
 
     member = models.ForeignKey(Member, on_delete=models.CASCADE, related_name='payments')
-    plan = models.ForeignKey(MembershipPlan, on_delete=models.PROTECT, verbose_name="Plan")
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, verbose_name="Plan")
     amount = models.DecimalField(max_digits=6, decimal_places=2)
     payment_date = models.DateField(auto_now_add=True)
     membership_start = models.DateField()
@@ -39,7 +37,6 @@ class Payment(models.Model):
         super().save(*args, **kwargs)
 
 @receiver(post_save, sender=Payment)
-
 def update_member_membership(sender, instance, created, **kwargs):
     if created:  # Solo cuando creas un pago nuevo
         member = instance.member
