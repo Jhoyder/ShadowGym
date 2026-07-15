@@ -1,9 +1,28 @@
 from django.contrib import admin
-from .models import MembershipPlan
+from .models import Plan
+
+
 # Register your models here.
-@admin.register(MembershipPlan)
-class MembershipPlanAdmin(admin.ModelAdmin):
-    list_display = ['name', 'duration', 'duration_unit', 'price', 'is_active']
-    list_filter = ['is_active', 'duration_unit']
+class PlanAdmin(admin.ModelAdmin):
+    """Admin para gestionar planes con vista previa de duracion en dias."""
+
+    list_display = ['name', 'duration_label', 'duration_days', 'price']
+    list_filter = ['duration_unit', 'price']
     search_fields = ['name']
-    list_editable = ['price', 'is_active']
+    readonly_fields = ['duration_days_preview']
+    fields = ['name', 'price', ('duration_value', 'duration_unit'), 'duration_days_preview', 'description']
+
+    @admin.display(description='Duración')
+    def duration_label(self, obj):
+        return obj.get_duration_display_label()
+
+    @admin.display(description='Duración en días')
+    def duration_days_preview(self, obj):
+        if obj is None:
+            return '-'
+        return obj.duration_days
+
+    class Media:
+        js = ('memberships/admin/plan_duration_preview.js',)
+
+admin.site.register(Plan, PlanAdmin)
