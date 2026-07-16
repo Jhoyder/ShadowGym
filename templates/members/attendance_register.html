@@ -1,0 +1,128 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Registro de asistencia | ShadowGym{% endblock %}
+{% block section_title %}Registro de asistencia{% endblock %}
+
+{% block content %}
+<div class="register-layout">
+
+    <!-- Panel principal: codigo y QR -->
+    <section class="panel register-main">
+        <div class="panel-head">
+            <h2>Ingresa el codigo del cliente</h2>
+        </div>
+
+        <form method="post" action="{% url 'members:attendance_by_code' %}" class="quick-code-form register-code-form">
+            {% csrf_token %}
+            <label for="id_code">Codigo de acceso o cedula</label>
+            {{ attendance_code_form.code }}
+            <button type="submit" class="btn-new-member">Registrar ingreso</button>
+        </form>
+        <p class="help-text" style="margin-top:6px;">Acepta codigo ShadowGym (SG-XXXXXXXX) o cedula del cliente.</p>
+
+        <div class="qr-scanner-box" style="margin-top:20px;">
+            <p class="panel-head" style="margin-bottom:10px;"><strong>O escanea el QR con la camara</strong></p>
+            <div id="qr-reader" class="qr-reader"></div>
+            <div class="scanner-actions">
+                <button type="button" id="start-qr-scan" class="btn-new-member">&#128247; Iniciar camara QR</button>
+                <button type="button" id="stop-qr-scan" class="action-link" disabled>Detener</button>
+            </div>
+            <p id="qr-scan-status" class="scan-status" data-state="info">Listo. Presiona "Iniciar camara QR".</p>
+        </div>
+    </section>
+
+    <!-- Panel lateral: registros de hoy -->
+    <section class="panel register-side">
+        <div class="panel-head">
+            <h2>Ingresos de hoy</h2>
+            <span class="panel-date">{{ today }}</span>
+        </div>
+        <div class="list-stack attendance-feed">
+            {% for attendance in recent_attendance %}
+                <article class="list-item">
+                    <div>
+                        <p class="item-title">{{ attendance.member.first_name }} {{ attendance.member.last_name }}</p>
+                        <p class="item-sub">{{ attendance.member.id_number }}</p>
+                    </div>
+                    <span class="badge ok">{{ attendance.marked_at|date:'H:i' }}</span>
+                </article>
+            {% empty %}
+                <p class="empty-state">Sin ingresos registrados hoy.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://unpkg.com/html5-qrcode" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.querySelector('.register-code-form');
+    const codeInput = document.getElementById('id_code');
+    const statusEl = document.getElementById('qr-scan-status');
+    const startBtn = document.getElementById('start-qr-scan');
+    const stopBtn = document.getElementById('stop-qr-scan');
+
+    let scanner = null;
+    let isRunning = false;
+
+    function setStatus(msg, state) {
+        statusEl.textContent = msg;
+        statusEl.dataset.state = state || 'info';
+    }
+
+    function setButtons(running) {
+        startBtn.disabled = running;
+        stopBtn.disabled = !running;
+    }
+
+    async function stopScanner() {
+        if (!scanner || !isRunning) return;
+        try { await scanner.stop(); await scanner.clear(); } catch (e) {}
+        isRunning = false;
+        setButtons(false);
+    }
+
+    async function startScanner() {
+        if (isRunning) return;
+        if (typeof Html5Qrcode === 'undefined') {
+            setStatus('No se pudo cargar el lector QR. Verifica conexion.', 'error');
+            return;
+        }
+        try {
+            const cameras = await Html5Qrcode.getCameras();
+            if (!cameras || cameras.length === 0) {
+                setStatus('No se detecto camara.', 'error');
+                return;
+            }
+            scanner = scanner || new Html5Qrcode('qr-reader');
+            await scanner.start(
+                cameras[0].id,
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                async function (code) {
+                    codeInput.value = (code || '').trim().toUpperCase();
+                    setStatus('Codigo detectado: ' + codeInput.value + '. Registrando...', 'ok');
+                    await stopScanner();
+                    form.submit();
+                },
+                function () {}
+            );
+            isRunning = true;
+            setButtons(true);
+            setStatus('Escaneando... apunta la camara al QR.', 'ok');
+        } catch (e) {
+            setStatus('No se pudo iniciar la camara. Revisa permisos.', 'error');
+            setButtons(false);
+        }
+    }
+
+    startBtn.addEventListener('click', startScanner);
+    stopBtn.addEventListener('click', async function () { await stopScanner(); setStatus('Detenido.', 'info'); });
+    window.addEventListener('beforeunload', stopScanner);
+    setButtons(false);
+    if (codeInput) codeInput.focus();
+});
+</script>
+{% endblock %}

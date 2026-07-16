@@ -5,35 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ShadowGym Dashboard{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=3">
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
-            <div class="brand-row">
-                <img src="{% static 'img/logo.png' %}" alt="Shadow Gym" class="brand-icon">
-                <span class="brand-text">ShadowGym</span>
-            </div>
-
-            <nav class="menu">
-                <a class="menu-link {% if request.resolver_match.app_name == 'members' %}active{% endif %}" href="{% url 'members:index' %}">Members</a>
-                <a class="menu-link {% if request.resolver_match.app_name == 'memberships' %}active{% endif %}" href="{% url 'memberships:index' %}">Memberships</a>
-                <a class="menu-link {% if request.resolver_match.app_name == 'payments' %}active{% endif %}" href="{% url 'payments:index' %}">Payments</a>
-            </nav>
-
-            <form class="logout-form" method="post" action="{% url 'logout' %}">
-                {% csrf_token %}
-                <button type="submit" class="logout-btn">Log out</button>
-            </form>
-        </aside>
+        {% include 'dashboard/_sidebar.html' %}
 
         <main class="main-panel">
             <header class="topbar">
                 <h1>{% block section_title %}Dashboard{% endblock %}</h1>
-                <div class="topbar-meta">
-                    <span class="status-pill">Online</span>
-                    <span class="user-chip">{{ request.user.username }}</span>
-                </div>
             </header>
 
             {% if messages %}
@@ -51,5 +31,182 @@
     </div>
 
     {% block extra_scripts %}{% endblock %}
+
+    <!-- Modal global para formularios inline -->
+    <div class="sg-modal-overlay" id="sgModalOverlay">
+        <div class="sg-modal" id="sgModal">
+            <button class="sg-modal-close" id="sgModalClose">&times;</button>
+            <div id="sgModalContent"></div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        /* ---- Modal helpers ---- */
+        const overlay = document.getElementById('sgModalOverlay');
+        const modalContent = document.getElementById('sgModalContent');
+        const closeBtn = document.getElementById('sgModalClose');
+
+        function openModal(html) {
+            modalContent.innerHTML = html;
+            overlay.classList.add('open');
+            // re-bind submit inside modal
+            const form = modalContent.querySelector('form');
+            if (form) bindModalForm(form);
+        }
+
+        function closeModal() {
+            overlay.classList.remove('open');
+            modalContent.innerHTML = '';
+        }
+
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeModal();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        function bindModalForm(form) {
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const data = new FormData(form);
+                const res = await fetch(form.action, { method: 'POST', body: data, headers: { 'X-Requested-With': 'modal' } });
+                if (res.redirected || res.ok) {
+                    closeModal();
+                    window.location.reload();
+                }
+            });
+        }
+
+        /* ---- Intercept Edit links → modal ---- */
+        document.addEventListener('click', async function (e) {
+            // QR button → show image in modal
+            const qrLink = e.target.closest('a.action-link[href*="/qr/"]');
+            if (qrLink) {
+                e.preventDefault();
+                const name = qrLink.closest('tr')?.querySelector('td')?.textContent?.trim() || 'Cliente';
+                openModal(
+                    '<div style="text-align:center;padding:8px 0">' +
+                    '<p style="font-size:15px;font-weight:700;margin-bottom:14px;">' + name + '</p>' +
+                    '<img src="' + qrLink.href + '" alt="QR" style="width:220px;height:220px;border-radius:12px;border:2px solid rgba(255,222,89,0.3);">' +
+                    '<p style="margin-top:12px;font-size:12px;color:#b7c0c9;">Escanea este codigo para registrar asistencia</p>' +
+                    '</div>'
+                );
+                return;
+            }
+
+            // Edit link → modal
+            const editLink = e.target.closest('a.action-link[href*="/edit/"]');
+            if (!editLink) return;
+            e.preventDefault();
+            const res = await fetch(editLink.href, { headers: { 'X-Requested-With': 'modal' } });
+            const html = await res.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const formPanel = doc.querySelector('.form-panel');
+            if (formPanel) {
+                openModal(formPanel.outerHTML);
+            }
+        });
+
+        /* ---- Intercept Mark attendance forms → fetch ---- */
+        document.addEventListener('submit', async function (e) {
+            // Enviar QR form
+            const sendForm = e.target.closest('form.send-qr-form');
+            if (sendForm) {
+                e.preventDefault();
+                const btn = sendForm.querySelector('button');
+                const row = sendForm.closest('tr');
+                const name = row?.querySelector('td')?.textContent?.trim() || 'Cliente';
+                btn.disabled = true;
+                btn.textContent = 'Enviando...';
+                const data = new FormData(sendForm);
+                const res = await fetch(sendForm.action, {
+                    method: 'POST', body: data,
+                    headers: { 'X-Requested-With': 'fetch' },
+                });
+                const json = await res.json();
+                btn.disabled = false;
+                btn.textContent = 'Enviar QR';
+
+                const icon = json.ok ? '&#10003;' : '&#9888;';
+                const color = json.ok ? '#dff5a4' : '#ffadad';
+                const borderColor = json.ok ? 'rgba(186,242,54,0.3)' : 'rgba(255,107,107,0.3)';
+                const bg = json.ok ? 'rgba(186,242,54,0.12)' : 'rgba(255,107,107,0.12)';
+                openModal(
+                    '<div style="text-align:center;padding:12px 0">' +
+                    '<div style="font-size:48px;margin-bottom:12px;">' + icon + '</div>' +
+                    '<p style="font-size:16px;font-weight:700;color:' + color + ';' +
+                    'background:' + bg + ';border:1px solid ' + borderColor + ';' +
+                    'border-radius:10px;padding:12px 20px;">' + json.message + '</p>' +
+                    '<p style="margin-top:10px;font-size:12px;color:#b7c0c9;">Cliente: ' + name + '</p>' +
+                    '</div>'
+                );
+                return;
+            }
+
+            // Mark attendance form
+            const form = e.target.closest('form.mark-form');
+            if (!form) return;
+            e.preventDefault();
+
+            const row = form.closest('tr');
+            const data = new FormData(form);
+            const res = await fetch(form.action, {
+                method: 'POST',
+                body: data,
+                headers: { 'X-Requested-With': 'fetch' },
+            });
+            const json = await res.json();
+
+            if (!json.ok) {
+                showToast(json.message, 'error');
+                return;
+            }
+
+            // Update attendance cell in this row
+            const attCell = row.querySelector('.attendance-cell');
+            if (attCell) {
+                attCell.innerHTML =
+                    '<div class="attendance-status marked">' +
+                    '<span class="badge ok">Marcado hoy</span>' +
+                    '<span class="marked-time">' + json.time + '</span>' +
+                    '</div>';
+            }
+
+            // Update action cell: replace mark button with locked state
+            const markForm = row.querySelector('form.mark-form');
+            if (markForm) {
+                markForm.outerHTML = '<span class="marked-lock">Registrado</span>';
+            }
+
+            row.classList.add('marked');
+            showToast(json.message, json.created ? 'success' : 'warning');
+        });
+
+        /* ---- Inline message near element ---- */
+        function showInlineMsg(el, msg, type) {
+            const existing = el.parentNode.querySelector('.inline-msg');
+            if (existing) existing.remove();
+            const div = document.createElement('div');
+            div.className = 'inline-msg inline-msg-' + (type || 'info');
+            div.textContent = msg;
+            el.parentNode.insertBefore(div, el);
+            setTimeout(() => div.remove(), 3500);
+        }
+
+        /* ---- Toast ---- */
+        function showToast(msg, type) {
+            const t = document.createElement('div');
+            t.className = 'sg-toast ' + (type || 'info');
+            t.textContent = msg;
+            document.body.appendChild(t);
+            requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 3000);
+        }
+    })();
+    </script>
 </body>
 </html>

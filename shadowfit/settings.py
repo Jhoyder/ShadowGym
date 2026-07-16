@@ -113,9 +113,19 @@ STATICFILES_DIRS = [
 ]
 
 LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/members/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
-# Correo en desarrollo: imprime los correos en consola.
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@shadowgym.local'
+# ---- Correo SMTP Gmail ----
+# Para obtener la contrasena de aplicacion:
+# 1. Ve a myaccount.google.com
+# 2. Seguridad > Verificacion en dos pasos (debe estar activa)
+# 3. Seguridad > Contrasenas de aplicaciones
+# 4. Genera una para "Correo / Windows" y pega aqui abajo
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'shadowgym@gmail.com'
+EMAIL_HOST_PASSWORD = ''   # <-- pega aqui tu contrasena de aplicacion de Google
+DEFAULT_FROM_EMAIL = 'ShadowGym <shadowgym@gmail.com>'

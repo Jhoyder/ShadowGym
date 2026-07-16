@@ -31,60 +31,24 @@
     </article>
 </div>
 
-<section class="panel quick-access-panel">
-    <div class="panel-head">
-        <h2>Registro rapido por codigo / QR</h2>
-    </div>
-    <form method="post" action="{% url 'members:attendance_by_code' %}" class="quick-code-form">
-        {% csrf_token %}
-        <label for="id_code">Codigo</label>
-        {{ attendance_code_form.code }}
-        <button type="submit" class="action-link submit">Registrar ingreso</button>
-    </form>
-    <p class="help-text">Acepta codigo ShadowGym o cedula del cliente.</p>
-
-    <div class="qr-scanner-box">
-        <div id="qr-reader" class="qr-reader"></div>
-        <div class="scanner-actions">
-            <button type="button" id="start-qr-scan" class="action-link soft">Iniciar camara QR</button>
-            <button type="button" id="stop-qr-scan" class="action-link" disabled>Detener</button>
-        </div>
-        <p id="qr-scan-status" class="scan-status" data-state="info">Listo para escanear. Presiona "Iniciar camara QR".</p>
-    </div>
-</section>
-
 <div class="panel-grid two-col">
-    <section class="panel">
-        <div class="panel-head">
-            <h2>Asistencia de hoy ({{ today }})</h2>
-        </div>
-        <div class="list-stack">
-            {% for attendance in recent_attendance %}
-                <article class="list-item">
-                    <div>
-                        <p class="item-title">{{ attendance.member.first_name }} {{ attendance.member.last_name }}</p>
-                        <p class="item-sub">ID: {{ attendance.member.id_number }}</p>
-                    </div>
-                    <span class="badge ok">
-                        {{ attendance.marked_at|date:'H:i' }}
-                    </span>
-                </article>
-            {% empty %}
-                <p class="empty-state">Aun no hay asistencia registrada hoy.</p>
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="panel">
+    <section class="panel" id="members-panel" style="overflow:hidden;">
         <div class="panel-head">
             <h2>Lista de clientes</h2>
-            <a class="action-link" href="{% url 'members:create' %}">+ Nuevo miembro</a>
+            <a class="btn-new-member" href="{% url 'members:create' %}">+ Nuevo miembro</a>
         </div>
 
-        <div class="filter-row">
-            <a class="filter-chip {% if attendance_filter == 'all' %}active{% endif %}" href="{% url 'members:index' %}">Todos</a>
-            <a class="filter-chip {% if attendance_filter == 'checked' %}active{% endif %}" href="{% url 'members:index' %}?attendance=checked">Marcaron hoy</a>
-            <a class="filter-chip {% if attendance_filter == 'pending' %}active{% endif %}" href="{% url 'members:index' %}?attendance=pending">Pendientes hoy</a>
+        <div class="members-toolbar">
+            <form method="get" action="{% url 'members:index' %}" class="search-form">
+                <input type="text" name="q" value="{{ search }}" placeholder="Buscar por nombre, cedula, telefono..." class="search-input" autocomplete="off">
+                {% if search %}<a class="search-clear" href="{% url 'members:index' %}">&#x2715;</a>{% endif %}
+            </form>
+
+            <div class="filter-row">
+                <a class="filter-chip {% if attendance_filter == 'all' %}active{% endif %}" href="{% url 'members:index' %}{% if search %}?q={{ search }}&{% else %}?{% endif %}attendance=all">Todos</a>
+                <a class="filter-chip {% if attendance_filter == 'checked' %}active{% endif %}" href="{% url 'members:index' %}{% if search %}?q={{ search }}&{% else %}?{% endif %}attendance=checked">Marcaron hoy</a>
+                <a class="filter-chip {% if attendance_filter == 'pending' %}active{% endif %}" href="{% url 'members:index' %}{% if search %}?q={{ search }}&{% else %}?{% endif %}attendance=pending">Pendientes hoy</a>
+            </div>
         </div>
 
         <div class="table-wrap">
@@ -108,7 +72,7 @@
                             <td>{{ member.phone }}</td>
                             <td>{{ member.membership_start|default:'-' }}</td>
                             <td>{{ member.membership_end|default:'-' }}</td>
-                            <td>
+                            <td class="attendance-cell">
                                 {% if member.checked_today %}
                                     <div class="attendance-status marked">
                                         <span class="badge ok">Marcado hoy</span>
@@ -124,7 +88,7 @@
                                 <div class="action-stack">
                                     <div class="action-row action-row-top">
                                         {% if not member.checked_today %}
-                                            <form method="post" action="{% url 'members:attendance' member.id %}" class="inline-form">
+                                            <form method="post" action="{% url 'members:attendance' member.id %}" class="inline-form mark-form">
                                                 {% csrf_token %}
                                                 <button class="action-link submit" type="submit">Marcar</button>
                                             </form>
@@ -132,9 +96,9 @@
                                             <span class="marked-lock">Registrado</span>
                                         {% endif %}
                                         <a class="action-link soft" href="{% url 'members:qr' member.id %}" target="_blank" rel="noopener">QR</a>
-                                        <form method="post" action="{% url 'members:send_code' member.id %}" class="inline-form">
+                                        <form method="post" action="{% url 'members:send_code' member.id %}" class="inline-form send-qr-form">
                                             {% csrf_token %}
-                                            <button class="action-link soft" type="submit">Correo</button>
+                                            <button class="action-link soft" type="submit">Enviar QR</button>
                                         </form>
                                     </div>
                                     <div class="action-row action-row-bottom">
@@ -153,108 +117,25 @@
             </table>
         </div>
     </section>
+
+    <section class="panel attendance-side" style="overflow:hidden;">
+        <div class="panel-head">
+            <h2>Asistencia de hoy</h2>
+            <span class="panel-date">{{ today }}</span>
+        </div>
+        <div class="list-stack">
+            {% for attendance in recent_attendance %}
+                <article class="list-item">
+                    <div>
+                        <p class="item-title">{{ attendance.member.first_name }} {{ attendance.member.last_name }}</p>
+                        <p class="item-sub">ID: {{ attendance.member.id_number }}</p>
+                    </div>
+                    <span class="badge ok">{{ attendance.marked_at|date:'H:i' }}</span>
+                </article>
+            {% empty %}
+                <p class="empty-state">Aun no hay asistencia hoy.</p>
+            {% endfor %}
+        </div>
+    </section>
 </div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script src="https://unpkg.com/html5-qrcode" defer></script>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const form = document.querySelector('.quick-code-form');
-    const codeInput = document.getElementById('id_code');
-    const statusEl = document.getElementById('qr-scan-status');
-    const startBtn = document.getElementById('start-qr-scan');
-    const stopBtn = document.getElementById('stop-qr-scan');
-    const readerId = 'qr-reader';
-
-    let scanner = null;
-    let isRunning = false;
-
-    function setStatus(message, state) {
-        statusEl.textContent = message;
-        statusEl.dataset.state = state || 'info';
-    }
-
-    function setButtons(running) {
-        startBtn.disabled = running;
-        stopBtn.disabled = !running;
-    }
-
-    async function stopScanner() {
-        if (!scanner || !isRunning) {
-            return;
-        }
-
-        try {
-            await scanner.stop();
-            await scanner.clear();
-        } catch (error) {
-            console.warn('No se pudo detener el scanner QR:', error);
-        } finally {
-            isRunning = false;
-            setButtons(false);
-        }
-    }
-
-    async function startScanner() {
-        if (isRunning) {
-            return;
-        }
-
-        if (typeof Html5Qrcode === 'undefined') {
-            setStatus('No se pudo cargar el lector QR. Verifica internet/CDN.', 'error');
-            return;
-        }
-
-        try {
-            const cameras = await Html5Qrcode.getCameras();
-            if (!cameras || cameras.length === 0) {
-                setStatus('No se detecto camara disponible.', 'error');
-                return;
-            }
-
-            scanner = scanner || new Html5Qrcode(readerId);
-            const cameraId = cameras[0].id;
-
-            await scanner.start(
-                cameraId,
-                { fps: 10, qrbox: { width: 220, height: 220 } },
-                async function (decodedText) {
-                    const code = (decodedText || '').trim().toUpperCase();
-                    if (!code) {
-                        return;
-                    }
-
-                    codeInput.value = code;
-                    setStatus('Codigo detectado: ' + code + '. Registrando ingreso...', 'ok');
-                    await stopScanner();
-                    form.submit();
-                },
-                function () {}
-            );
-
-            isRunning = true;
-            setButtons(true);
-            setStatus('Escaneando... apunta la camara al QR del cliente.', 'ok');
-        } catch (error) {
-            console.error(error);
-            setStatus('No fue posible iniciar la camara. Revisa permisos del navegador.', 'error');
-            isRunning = false;
-            setButtons(false);
-        }
-    }
-
-    startBtn.addEventListener('click', startScanner);
-    stopBtn.addEventListener('click', async function () {
-        await stopScanner();
-        setStatus('Escaneo detenido.', 'info');
-    });
-
-    window.addEventListener('beforeunload', function () {
-        stopScanner();
-    });
-
-    setButtons(false);
-});
-</script>
 {% endblock %}

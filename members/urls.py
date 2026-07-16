@@ -1,5 +1,6 @@
 from django.urls import path
 from .views import (
+	attendance_register,
 	create_member,
 	dashboard,
 	delete_member,
@@ -14,6 +15,7 @@ app_name = "members"
 
 urlpatterns = [
 	path('', dashboard, name='index'),
+	path('registro/', attendance_register, name='attendance_register'),
 	path('attendance/by-code/', mark_attendance_by_code, name='attendance_by_code'),
 	path('<int:pk>/attendance/', mark_attendance, name='attendance'),
 	path('<int:pk>/qr/', member_qr, name='qr'),

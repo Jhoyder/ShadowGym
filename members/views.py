@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from datetime import timedelta
 from django.shortcuts import get_object_or_404, redirect
@@ -68,9 +68,18 @@ def dashboard(request):
 	clear_old_attendance(today)
 	soon_limit = today + timedelta(days=7)
 	attendance_filter = request.GET.get('attendance', 'all')
+	search = request.GET.get('q', '').strip()
 
 	members_qs = Member.objects.order_by('-created_at')
 	all_members_qs = Member.objects.order_by('last_name', 'first_name')
+
+	if search:
+		all_members_qs = all_members_qs.filter(
+			Q(first_name__icontains=search) |
+			Q(last_name__icontains=search) |
+			Q(id_number__icontains=search) |
+			Q(phone__icontains=search)
+		)
 	today_attendance_qs = Attendance.objects.filter(date=today).select_related('member')
 	today_attendance_map = {item.member_id: item for item in today_attendance_qs}
 	checked_today_ids = list(today_attendance_map.keys())
@@ -103,12 +112,26 @@ def dashboard(request):
 		'attendance_filter': attendance_filter,
 		'today': today,
 		'checked_today_ids': checked_today_ids,
-		'attendance_code_form': AttendanceCodeForm(),
 		'recent_members': members_qs[:8],
 		'recent_attendance': today_attendance_qs.order_by('-marked_at')[:8],
 		'all_members': visible_members,
+		'search': search,
 	}
 	return render(request, 'members/index.html', context)
+
+
+@login_required
+def attendance_register(request):
+	"""Pagina dedicada al registro de asistencia por codigo o QR."""
+	today = timezone.localdate()
+	clear_old_attendance(today)
+	form = AttendanceCodeForm()
+	recent = Attendance.objects.filter(date=today).select_related('member').order_by('-marked_at')[:20]
+	return render(request, 'members/attendance_register.html', {
+		'attendance_code_form': form,
+		'recent_attendance': recent,
+		'today': today,
+	})
 
 
 @login_required
@@ -152,7 +175,11 @@ def mark_attendance_by_code(request):
 @login_required
 def mark_attendance(request, pk):
 	"""Marca la asistencia diaria de un miembro una sola vez por dia."""
+	is_fetch = request.headers.get('X-Requested-With') == 'fetch'
+
 	if request.method != 'POST':
+		if is_fetch:
+			return JsonResponse({'ok': False, 'message': 'Metodo no permitido.'}, status=405)
 		messages.warning(request, 'Metodo no permitido para marcar asistencia.')
 		return redirect('members:index')
 
@@ -160,17 +187,28 @@ def mark_attendance(request, pk):
 	today = timezone.localdate()
 	clear_old_attendance(today)
 	can_enter, reason = can_member_enter(member, today)
+
 	if not can_enter:
+		if is_fetch:
+			return JsonResponse({'ok': False, 'message': f'{member}: {reason}'})
 		messages.error(request, f'{member}: {reason}')
 		return redirect('members:index')
 
 	_, created = Attendance.objects.get_or_create(member=member, date=today)
+	now_time = timezone.localtime(timezone.now()).strftime('%H:%M')
+
+	if is_fetch:
+		return JsonResponse({
+			'ok': True,
+			'created': created,
+			'time': now_time,
+			'message': f'Ingreso registrado para {member}.' if created else f'{member} ya marco asistencia hoy.',
+		})
 
 	if created:
 		messages.success(request, f'Asistencia marcada para {member}.')
 	else:
 		messages.warning(request, f'{member} ya marco asistencia hoy.')
-
 	return redirect('members:index')
 
 
@@ -187,20 +225,27 @@ def member_qr(request, pk):
 @login_required
 def send_member_code_email(request, pk):
 	"""Envia por correo el codigo de acceso y su QR al miembro."""
+	is_fetch = request.headers.get('X-Requested-With') == 'fetch'
+
 	if request.method != 'POST':
+		if is_fetch:
+			return JsonResponse({'ok': False, 'message': 'Metodo no permitido.'}, status=405)
 		messages.warning(request, 'Metodo no permitido para envio de codigo.')
 		return redirect('members:index')
 
 	member = get_object_or_404(Member, pk=pk)
 	if not member.email:
-		messages.error(request, f'{member} no tiene correo registrado.')
+		msg = f'{member} no tiene correo registrado.'
+		if is_fetch:
+			return JsonResponse({'ok': False, 'message': msg})
+		messages.error(request, msg)
 		return redirect('members:index')
 
 	body = (
-		f'Hola {member.first_name},\\n\\n'
-		'Este es tu codigo de acceso para ShadowGym.\\n'
-		f'Codigo: {member.access_code}\\n\\n'
-		'Puedes presentar el codigo o el QR adjunto para registrar tu ingreso.\\n'
+		f'Hola {member.first_name},\n\n'
+		'Este es tu codigo de acceso para ShadowGym.\n'
+		f'Codigo: {member.access_code}\n\n'
+		'Puedes presentar el codigo o el QR adjunto para registrar tu ingreso.\n'
 	)
 
 	try:
@@ -215,9 +260,15 @@ def send_member_code_email(request, pk):
 			mimetype='image/png',
 		)
 		email.send(fail_silently=False)
-		messages.success(request, f'Codigo enviado por correo a {member.email}.')
-	except Exception:
-		messages.error(request, 'No se pudo enviar el correo. Revisa la configuracion SMTP.')
+		msg = f'QR enviado a {member.email}.'
+		if is_fetch:
+			return JsonResponse({'ok': True, 'message': msg})
+		messages.success(request, msg)
+	except Exception as e:
+		msg = 'No se pudo enviar el correo. Revisa la configuracion SMTP.'
+		if is_fetch:
+			return JsonResponse({'ok': False, 'message': msg})
+		messages.error(request, msg)
 
 	return redirect('members:index')
 

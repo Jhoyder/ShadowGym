@@ -1,0 +1,27 @@
+{% load static %}
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <img src="{% static 'img/logo.png' %}" alt="Shadow Gym" class="brand-icon">
+        <span class="brand-text">ShadowGym</span>
+    </div>
+
+    <nav class="menu">
+        <a class="menu-link {% if request.resolver_match.app_name == 'members' and request.resolver_match.url_name == 'attendance_register' %}active{% endif %}" href="{% url 'members:attendance_register' %}">
+            <span class="menu-icon">&#9654;</span> Registro
+        </a>
+        <a class="menu-link {% if request.resolver_match.app_name == 'members' and request.resolver_match.url_name != 'attendance_register' %}active{% endif %}" href="{% url 'members:index' %}">
+            <span class="menu-icon">&#128100;</span> Members
+        </a>
+        <a class="menu-link {% if request.resolver_match.app_name == 'memberships' %}active{% endif %}" href="{% url 'memberships:index' %}">
+            <span class="menu-icon">&#128196;</span> Memberships
+        </a>
+        <a class="menu-link {% if request.resolver_match.app_name == 'payments' %}active{% endif %}" href="{% url 'payments:index' %}">
+            <span class="menu-icon">&#128176;</span> Payments
+        </a>
+    </nav>
+
+    <form method="post" action="{% url 'logout' %}" class="logout-form">
+        {% csrf_token %}
+        <button type="submit" class="logout-btn">Log out</button>
+    </form>
+</aside>
