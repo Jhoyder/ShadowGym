@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
+
 # Create your models here.
 class Payment(models.Model):
     """Registra un pago y la vigencia de membresia asociada al miembro."""
@@ -23,15 +24,15 @@ class Payment(models.Model):
     membership_end = models.DateField()
     method = models.CharField(max_length=10, choices=PAYMENT_METHODS, default='cash')
     notes = models.TextField(blank=True, null=True)
-    
+
     def __str__(self):
         return f"{self.member} - {self.plan.name if self.plan else 'Sin plan'} -${self.amount}"
-    
+
     class Meta:
         verbose_name = "Pago"
         verbose_name_plural = "Pagos"
         ordering = ['-payment_date']
-   
+
     def save(self, *args, **kwargs):
         """Calcula automáticamente la fecha de fin basada en el plan seleccionado"""
         if self.plan and self.membership_start:
@@ -40,7 +41,6 @@ class Payment(models.Model):
         super().save(*args, **kwargs)
 
 @receiver(post_save, sender=Payment)
-
 def update_member_membership(sender, instance, created, **kwargs):
     """Actualiza fechas y estado del miembro cuando se crea un nuevo pago."""
     if created:  # Solo cuando creas un pago nuevo

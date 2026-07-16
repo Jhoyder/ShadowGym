@@ -1,0 +1,86 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Payments | ShadowGym{% endblock %}
+{% block section_title %}Payments Control{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+    <article class="kpi-card">
+        <p class="kpi-label">Total Payments</p>
+        <p class="kpi-value">{{ total_payments }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">This Month</p>
+        <p class="kpi-value">{{ month_payments }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Total Revenue</p>
+        <p class="kpi-value">${{ total_revenue|floatformat:2 }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Month Revenue</p>
+        <p class="kpi-value">${{ month_revenue|floatformat:2 }}</p>
+    </article>
+</div>
+
+<div class="panel-grid two-col">
+    <section class="panel">
+        <div class="panel-head">
+            <h2>Latest Payments</h2>
+            <a class="action-link" href="{% url 'payments:create' %}">+ Nuevo pago</a>
+        </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Plan</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Method</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in recent_payments %}
+                        <tr>
+                            <td>{{ payment.member }}</td>
+                            <td>{{ payment.plan.name }}</td>
+                            <td>${{ payment.amount }}</td>
+                            <td>{{ payment.payment_date }}</td>
+                            <td>{{ payment.get_method_display }}</td>
+                            <td class="action-cell">
+                                <a class="action-link" href="{% url 'payments:edit' payment.id %}">Editar</a>
+                                <a class="action-link danger" href="{% url 'payments:delete' payment.id %}">Eliminar</a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="empty-state">No payments yet.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-head">
+            <h2>By Method</h2>
+        </div>
+        <div class="list-stack">
+            {% for row in methods %}
+                <article class="list-item">
+                    <div>
+                        <p class="item-title">{{ row.label }}</p>
+                        <p class="item-sub">{{ row.total }} payments</p>
+                    </div>
+                    <strong>${{ row.amount|floatformat:2 }}</strong>
+                </article>
+            {% empty %}
+                <p class="empty-state">No method stats yet.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

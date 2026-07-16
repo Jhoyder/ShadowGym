@@ -1,0 +1,61 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Memberships | ShadowGym{% endblock %}
+{% block section_title %}Membership Plans{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+    <article class="kpi-card">
+        <p class="kpi-label">Total Plans</p>
+        <p class="kpi-value">{{ total_plans }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Average Price</p>
+        <p class="kpi-value">${{ average_price|floatformat:2 }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Active Members in Plans</p>
+        <p class="kpi-value">{{ total_active_links }}</p>
+    </article>
+</div>
+
+<section class="panel">
+    <div class="panel-head">
+        <h2>Plans</h2>
+        <a class="action-link" href="{% url 'memberships:create' %}">+ Nuevo plan</a>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Plan</th>
+                    <th>Duration</th>
+                    <th>Price</th>
+                    <th>Payments</th>
+                    <th>Active Members</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plan in plans %}
+                    <tr>
+                        <td>{{ plan.name }}</td>
+                        <td>{{ plan.get_duration_display_label }}</td>
+                        <td>${{ plan.price }}</td>
+                        <td>{{ plan.total_payments }}</td>
+                        <td>{{ plan.active_members }}</td>
+                        <td class="action-cell">
+                            <a class="action-link" href="{% url 'memberships:edit' plan.id %}">Editar</a>
+                            <a class="action-link danger" href="{% url 'memberships:delete' plan.id %}">Eliminar</a>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="6" class="empty-state">No plans yet.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

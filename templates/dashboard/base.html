@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ShadowGym Dashboard{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="brand-row">
+                <img src="{% static 'img/logo.png' %}" alt="Shadow Gym" class="brand-icon">
+                <span class="brand-text">ShadowGym</span>
+            </div>
+
+            <nav class="menu">
+                <a class="menu-link {% if request.resolver_match.app_name == 'members' %}active{% endif %}" href="{% url 'members:index' %}">Members</a>
+                <a class="menu-link {% if request.resolver_match.app_name == 'memberships' %}active{% endif %}" href="{% url 'memberships:index' %}">Memberships</a>
+                <a class="menu-link {% if request.resolver_match.app_name == 'payments' %}active{% endif %}" href="{% url 'payments:index' %}">Payments</a>
+            </nav>
+
+            <form class="logout-form" method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">Log out</button>
+            </form>
+        </aside>
+
+        <main class="main-panel">
+            <header class="topbar">
+                <h1>{% block section_title %}Dashboard{% endblock %}</h1>
+                <div class="topbar-meta">
+                    <span class="status-pill">Online</span>
+                    <span class="user-chip">{{ request.user.username }}</span>
+                </div>
+            </header>
+
+            {% if messages %}
+                <section class="flash-stack">
+                    {% for message in messages %}
+                        <article class="flash {{ message.tags|default:'info' }}">{{ message }}</article>
+                    {% endfor %}
+                </section>
+            {% endif %}
+
+            <section class="content-area">
+                {% block content %}{% endblock %}
+            </section>
+        </main>
+    </div>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

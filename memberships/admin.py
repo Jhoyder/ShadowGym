@@ -1,8 +1,6 @@
 from django.contrib import admin
 from .models import Plan
 
-
-# Register your models here.
 class PlanAdmin(admin.ModelAdmin):
     """Admin para gestionar planes con vista previa de duracion en dias."""
 

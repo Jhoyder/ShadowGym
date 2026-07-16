@@ -45,10 +45,10 @@ class Plan(models.Model):
         """Sincroniza duration_days antes de guardar el plan."""
         self.duration_days = self.to_days()
         super().save(*args, **kwargs)
-    
+
     def __str__(self):
         return f"{self.name} - {self.get_duration_display_label()} - ${self.price}"
-   
+
     class Meta:
         ordering = ['name']
         verbose_name = "Plan"

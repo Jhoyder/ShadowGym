@@ -2,10 +2,7 @@ from django.test import TestCase
 from django.db import IntegrityError
 
 from .models import Plan
-
 # Create your tests here.
-
-
 class PlanModelTests(TestCase):
 	def test_str_uses_custom_duration_label(self):
 		plan = Plan.objects.create(name='Gold', price=150.00, duration_value=1, duration_unit=Plan.YEARS)

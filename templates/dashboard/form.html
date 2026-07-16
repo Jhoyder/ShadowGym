@@ -1,0 +1,36 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{{ title }} | ShadowGym{% endblock %}
+{% block section_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="panel form-panel">
+    <form method="post" class="dashboard-form">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="form-row">
+                {% if field.field.widget.input_type == 'checkbox' %}
+                    <div class="checkbox-row">
+                        {{ field }}
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    </div>
+                {% else %}
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                {% endif %}
+                {% if field.help_text %}
+                    <small class="help-text">{{ field.help_text }}</small>
+                {% endif %}
+                {% if field.errors %}
+                    <p class="field-error">{{ field.errors|striptags }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <div class="form-actions">
+            <button class="action-link submit" type="submit">Guardar</button>
+            <a class="action-link" href="{% url cancel_url %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
