@@ -1,0 +1,17 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}{{ title }} | ShadowGym{% endblock %}
+{% block section_title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="panel form-panel">
+    <p class="delete-text">Vas a eliminar: <strong>{{ object_name }}</strong></p>
+    <p class="item-sub">Esta acción no se puede deshacer.</p>
+
+    <form method="post" class="form-actions">
+        {% csrf_token %}
+        <button class="action-link danger submit" type="submit">Sí, eliminar</button>
+        <a class="action-link" href="{% url cancel_url %}">Cancelar</a>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,141 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Members | ShadowGym{% endblock %}
+{% block section_title %}Members Overview{% endblock %}
+
+{% block content %}
+<div class="kpi-grid">
+    <article class="kpi-card">
+        <p class="kpi-label">Total clientes</p>
+        <p class="kpi-value">{{ total_members }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Activos</p>
+        <p class="kpi-value">{{ active_members }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Inactivos</p>
+        <p class="kpi-value">{{ inactive_members }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Vencen en 7 dias</p>
+        <p class="kpi-value">{{ expiring_soon }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Marcaron hoy</p>
+        <p class="kpi-value">{{ attendance_today }}</p>
+    </article>
+    <article class="kpi-card">
+        <p class="kpi-label">Pendientes hoy</p>
+        <p class="kpi-value">{{ pending_today }}</p>
+    </article>
+</div>
+
+<div class="panel-grid two-col">
+    <section class="panel" id="members-panel" style="overflow:hidden;">
+        <div class="panel-head">
+            <h2>Lista de clientes</h2>
+            <a class="btn-new-member" href="{% url 'members:create' %}">+ Nuevo miembro</a>
+        </div>
+
+        <div class="members-toolbar">
+            <form method="get" action="{% url 'members:index' %}" class="search-form">
+                <input type="text" name="q" value="{{ search }}" placeholder="Buscar por nombre, cedula, telefono..." class="search-input" autocomplete="off">
+                {% if search %}<a class="search-clear" href="{% url 'members:index' %}">&#x2715;</a>{% endif %}
+            </form>
+
+            <div class="filter-row">
+                <a class="filter-chip {% if attendance_filter == 'all' %}active{% endif %}" href="{% url 'members:index' %}{% if search %}?q={{ search }}&{% else %}?{% endif %}attendance=all">Todos</a>
+                <a class="filter-chip {% if attendance_filter == 'checked' %}active{% endif %}" href="{% url 'members:index' %}{% if search %}?q={{ search }}&{% else %}?{% endif %}attendance=checked">Marcaron hoy</a>
+                <a class="filter-chip {% if attendance_filter == 'pending' %}active{% endif %}" href="{% url 'members:index' %}{% if search %}?q={{ search }}&{% else %}?{% endif %}attendance=pending">Pendientes hoy</a>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Codigo</th>
+                        <th>Telefono</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>Asistencia</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for member in all_members %}
+                        <tr class="member-row {% if member.checked_today %}marked{% endif %}">
+                            <td>{{ member.first_name }} {{ member.last_name }}</td>
+                            <td><span class="code-chip">{{ member.access_code }}</span></td>
+                            <td>{{ member.phone }}</td>
+                            <td>{{ member.membership_start|default:'-' }}</td>
+                            <td>{{ member.membership_end|default:'-' }}</td>
+                            <td class="attendance-cell">
+                                {% if member.checked_today %}
+                                    <div class="attendance-status marked">
+                                        <span class="badge ok">Marcado hoy</span>
+                                        <span class="marked-time">{{ member.checked_time|date:'H:i' }}</span>
+                                    </div>
+                                {% else %}
+                                    <div class="attendance-status pending">
+                                        <span class="badge off">Pendiente</span>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="action-cell">
+                                <div class="action-stack">
+                                    <div class="action-row action-row-top">
+                                        {% if not member.checked_today %}
+                                            <form method="post" action="{% url 'members:attendance' member.id %}" class="inline-form mark-form">
+                                                {% csrf_token %}
+                                                <button class="action-link submit" type="submit">Marcar</button>
+                                            </form>
+                                        {% else %}
+                                            <span class="marked-lock">Registrado</span>
+                                        {% endif %}
+                                        <a class="action-link soft" href="{% url 'members:qr' member.id %}" target="_blank" rel="noopener">QR</a>
+                                        <form method="post" action="{% url 'members:send_code' member.id %}" class="inline-form send-qr-form">
+                                            {% csrf_token %}
+                                            <button class="action-link soft" type="submit">Enviar QR</button>
+                                        </form>
+                                    </div>
+                                    <div class="action-row action-row-bottom">
+                                        <a class="action-link" href="{% url 'members:edit' member.id %}">Editar</a>
+                                        <a class="action-link danger" href="{% url 'members:delete' member.id %}">Eliminar</a>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="empty-state">No hay clientes para este filtro.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel attendance-side" style="overflow:hidden;">
+        <div class="panel-head">
+            <h2>Asistencia de hoy</h2>
+            <span class="panel-date">{{ today }}</span>
+        </div>
+        <div class="list-stack">
+            {% for attendance in recent_attendance %}
+                <article class="list-item">
+                    <div>
+                        <p class="item-title">{{ attendance.member.first_name }} {{ attendance.member.last_name }}</p>
+                        <p class="item-sub">ID: {{ attendance.member.id_number }}</p>
+                    </div>
+                    <span class="badge ok">{{ attendance.marked_at|date:'H:i' }}</span>
+                </article>
+            {% empty %}
+                <p class="empty-state">Aun no hay asistencia hoy.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

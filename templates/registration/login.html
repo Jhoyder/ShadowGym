@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión | ShadowGym</title>
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+</head>
+<body>
+    <main class="login-page">
+        <section class="login-card">
+            <div class="login-panel">
+                <div class="brand-block">
+                    <img src="{% static 'img/logo.png' %}" alt="Shadow Gym" class="brand-logo">
+                </div>
+
+                <h1>Iniciar sesión</h1>
+
+                {% if form.errors %}
+                    <div class="error-box">
+                        Usuario o contraseña incorrectos.
+                    </div>
+                {% endif %}
+
+                <form method="post" class="login-form">
+                    {% csrf_token %}
+                    {% if next %}
+                        <input type="hidden" name="next" value="{{ next }}">
+                    {% endif %}
+
+                    <label for="id_username">Usuario</label>
+                    <input type="text" name="username" id="id_username" placeholder="Tu usuario" required>
+
+                    <label for="id_password">Contraseña</label>
+                    <input type="password" name="password" id="id_password" placeholder="Tu contraseña" required>
+
+                    <button type="submit">Entrar</button>
+                </form>
+            </div>
+
+            <div class="visual-panel">
+                <video class="visual-video" autoplay muted loop playsinline>
+                    <source src="{% static 'video/login-bg.mp4' %}" type="video/mp4">
+                </video>
+                <div class="visual-content">
+                    <p class="visual-tag">Gym Management</p>
+                    <h2>Controla miembros, pagos y planes desde un solo lugar.</h2>
+                    <p>
+                        Una entrada limpia para empezar a construir la interfaz moderna de tu sistema.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
