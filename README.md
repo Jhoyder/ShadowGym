@@ -2,6 +2,8 @@
 
 Sistema web completo para la administración de un gimnasio. Desarrollado con **Django** y diseño oscuro personalizado. Permite gestionar miembros, membresías, pagos y control de asistencia diaria con código QR.
 
+🇬🇧 [View in English](README.en.md)
+
 ---
 
 ## Características principales
